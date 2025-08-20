@@ -10,7 +10,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data_prod:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -20,7 +20,7 @@ services:
     networks:
       - tic-tac-toe-prod
 
-  # Tic-tac-toe game application for production
+  # Caro game application for production
   tic-tac-toe-game:
     image: chungdfly/tic-tac-toe:latest
     container_name: tic_tac_toe_game_prod
@@ -32,7 +32,6 @@ services:
       - PORT=3000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DB=0
       - TURN_TIME_LIMIT=${TURN_TIME_LIMIT:-30}
       - MAX_PLAYERS_PER_ROOM=${MAX_PLAYERS_PER_ROOM:-2}
