@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Cờ Caro Online</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Cờ Caro Online</h1>
+            <p>Chơi cờ caro trực tuyến với bạn bè</p>
+        </header>
+
+        <!-- Màn hình nhập tên user -->
+        <div id="userNameScreen" class="screen active">
+            <div class="menu-card">
+                <h2>🎮 Chào mừng đến với Cờ Caro Online!</h2>
+                <p class="welcome-text">Vui lòng nhập tên của bạn để bắt đầu chơi</p>
+                <div class="player-input">
+                    <label for="playerName">Tên của bạn:</label>
+                    <input type="text" id="playerName" placeholder="Nhập tên của bạn..." maxlength="20">
+                </div>
+                <div class="menu-buttons">
+                    <button id="confirmNameBtn" class="btn btn-primary">
+                        <span>✅</span>
+                        Xác nhận
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình danh sách phòng -->
+        <div id="roomListScreen" class="screen">
+            <div class="menu-card room-list-card">
+                <h2>🏠 Danh sách phòng</h2>
+                <div class="user-info">
+                    <span>Xin chào, <strong id="currentUserName">-</strong>!</span>
+                    <button id="changeNameBtn" class="btn btn-small">Đổi tên</button>
+                </div>
+                
+                <div class="room-actions">
+                    <button id="createNewRoomBtn" class="btn btn-primary">
+                        <span>🏠</span>
+                        Tạo phòng mới
+                    </button>
+                    <button id="refreshRoomsBtn" class="btn btn-secondary">
+                        <span>🔄</span>
+                        Làm mới
+                    </button>
+                </div>
+
+                <div class="rooms-container">
+                    <h3>Phòng hiện có:</h3>
+                    <div id="roomsList" class="rooms-list">
+                        <div class="no-rooms">Chưa có phòng nào. Hãy tạo phòng mới!</div>
+                    </div>
+                </div>
+
+                <div class="join-room-section">
+                    <h3>Hoặc tham gia bằng mã phòng:</h3>
+                    <div class="room-input">
+                        <input type="text" id="roomCodeInput" placeholder="Nhập mã phòng..." maxlength="6">
+                        <button id="joinByCodeBtn" class="btn btn-primary">Tham gia</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình phòng chờ -->
+        <div id="waitingRoomScreen" class="screen">
+            <div class="menu-card">
+                <h2>🎯 Phòng chờ</h2>
+                <div class="room-info-section">
+                    <div class="room-code">
+                        <span>Mã phòng: <strong id="waitingRoomId">-</strong></span>
+                        <button id="copyWaitingRoomBtn" class="btn btn-small">📋 Sao chép</button>
+                    </div>
+                    <p class="waiting-text">Đang chờ người chơi thứ 2 tham gia...</p>
+                </div>
+
+                <div class="players-waiting">
+                    <div class="player-slot filled">
+                        <span class="player-symbol">❌</span>
+                        <span id="waitingPlayer1Name">-</span>
+                        <span class="player-role">(Chủ phòng)</span>
+                    </div>
+                    <div class="vs-waiting">VS</div>
+                    <div class="player-slot empty">
+                        <span class="player-symbol">⭕</span>
+                        <span>Đang chờ...</span>
+                    </div>
+                </div>
+
+                <div class="waiting-actions">
+                    <button id="leaveWaitingRoomBtn" class="btn btn-danger">
+                        <span>🚪</span>
+                        Rời phòng
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình game -->
+        <div id="gameScreen" class="screen">
+            <div class="game-info">
+                <div class="room-info">
+                    <span>Phòng: <strong id="currentRoomId">-</strong></span>
+                    <button id="copyRoomBtn" class="btn btn-small">📋 Sao chép</button>
+                </div>
+                <div class="players-info">
+                    <div class="player" id="player1">
+                        <span class="player-symbol">❌</span>
+                        <span class="player-name">Đang chờ...</span>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="player" id="player2">
+                        <span class="player-symbol">⭕</span>
+                        <span class="player-name">Đang chờ...</span>
+                    </div>
+                </div>
+                <div class="game-status">
+                    <div class="current-turn">
+                        <span id="turnIndicator">Đang chờ người chơi...</span>
+                    </div>
+                    <div class="turn-timer">
+                        <div class="timer-circle">
+                            <span id="timerDisplay">30</span>
+                        </div>
+                        <div class="timer-progress">
+                            <div id="timerBar" class="timer-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-board-container">
+                <div id="gameBoard" class="game-board"></div>
+            </div>
+
+            <div class="game-controls">
+                <button id="resetGameBtn" class="btn btn-secondary">
+                    <span>🔄</span>
+                    Chơi lại
+                </button>
+                <button id="leaveRoomBtn" class="btn btn-danger">
+                    <span>🚪</span>
+                    Rời phòng
+                </button>
+            </div>
+        </div>
+
+        <!-- Màn hình kết quả -->
+        <div id="resultModal" class="modal">
+            <div class="modal-content">
+                <h2 id="resultTitle">Kết quả</h2>
+                <p id="resultMessage">Game đã kết thúc!</p>
+                <div class="modal-buttons">
+                    <button id="playAgainBtn" class="btn btn-primary">Chơi lại</button>
+                    <button id="backToMenuResultBtn" class="btn btn-secondary">Về menu chính</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast thông báo -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>

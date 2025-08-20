@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  # Redis database
+  redis:
+    image: redis:7-alpine 
+    container_name: caro_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Caro game application
+  caro-game:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: caro_game
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - TURN_TIME_LIMIT=30
+      - MAX_PLAYERS_PER_ROOM=2
+      - ROOM_EXPIRY_TIME=3600
+      - SESSION_EXPIRY=86400
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  redis_data:
