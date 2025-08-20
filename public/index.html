@@ -105,26 +105,6 @@
 
         <!-- Game screen -->
         <div id="gameScreen" class="screen">
-            <div class="game-header">
-                <div class="room-info">
-                    <span>Room: <strong id="currentRoomId">-</strong></span>
-                    <button id="copyRoomBtn" class="btn btn-small">📋 Copy</button>
-                </div>
-                <div class="game-status">
-                    <div class="current-turn">
-                        <span id="turnIndicator">Waiting for players...</span>
-                    </div>
-                    <div class="turn-timer">
-                        <div class="timer-circle">
-                            <span id="timerDisplay">30</span>
-                        </div>
-                        <div class="timer-progress">
-                            <div id="timerBar" class="timer-bar"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="game-content">
                 <div class="game-board-container">
                     <div id="gameBoard" class="game-board"></div>
@@ -132,6 +112,14 @@
 
                 <!-- Chat & Players Section -->
                 <div class="chat-players-section">
+                    <!-- Room Info -->
+                    <div class="room-info-sidebar">
+                        <div class="room-details">
+                            <span>🏠 Room: <strong id="currentRoomId">-</strong></span>
+                            <button id="copyRoomBtn" class="btn btn-small">📋 Copy</button>
+                        </div>
+                    </div>
+
                     <!-- Chat Box -->
                     <div class="chat-container">
                         <div class="chat-header">
@@ -147,22 +135,43 @@
                         </div>
                     </div>
 
-                    <!-- Players Info (Compact) -->
+                    <!-- Players Info with Timer -->
                     <div class="players-info-compact">
-                        <h4>Players</h4>
-                        <div class="player-card" id="player1">
+                        <h4>👥 Players</h4>
+                        <div class="current-turn-display">
+                            <span id="turnIndicator">Waiting for players...</span>
+                        </div>
+                        <div class="player-card active-player" id="player1" data-symbol="X">
+                            <div class="progress-border">
+                                <div class="progress-fill" id="player1ProgressFill"></div>
+                            </div>
                             <span class="player-symbol">❌</span>
                             <div class="player-details">
                                 <span class="player-name">Waiting...</span>
                                 <span class="player-role">Player 1</span>
+                                <div class="player-timer">
+                                    <span class="timer-text">⏰ <span id="player1Timer">30</span>s</span>
+                                    <div class="timer-progress-mini">
+                                        <div class="timer-bar-mini" id="player1TimerBar"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="vs-compact">VS</div>
-                        <div class="player-card" id="player2">
+                        <div class="player-card" id="player2" data-symbol="O">
+                            <div class="progress-border">
+                                <div class="progress-fill" id="player2ProgressFill"></div>
+                            </div>
                             <span class="player-symbol">⭕</span>
                             <div class="player-details">
                                 <span class="player-name">Waiting...</span>
                                 <span class="player-role">Player 2</span>
+                                <div class="player-timer">
+                                    <span class="timer-text">⏰ <span id="player2Timer">30</span>s</span>
+                                    <div class="timer-progress-mini">
+                                        <div class="timer-bar-mini" id="player2TimerBar"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

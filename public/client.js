@@ -37,8 +37,13 @@ class CaroGameClient {
             player1: document.getElementById('player1'),
             player2: document.getElementById('player2'),
             turnIndicator: document.getElementById('turnIndicator'),
-            timerDisplay: document.getElementById('timerDisplay'),
-            timerBar: document.getElementById('timerBar'),
+            
+            // Player timers
+            player1Timer: document.getElementById('player1Timer'),
+            player2Timer: document.getElementById('player2Timer'),
+            player1TimerBar: document.getElementById('player1TimerBar'),
+            player2TimerBar: document.getElementById('player2TimerBar'),
+            
             resultModal: document.getElementById('resultModal'),
             resultTitle: document.getElementById('resultTitle'),
             resultMessage: document.getElementById('resultMessage'),
@@ -384,6 +389,10 @@ class CaroGameClient {
         this.updateTurnIndicator();
         this.showGameScreen();
         
+        // Start client-side timer countdown
+        this.updateTimer();
+        this.startClientTimer();
+        
         this.showToast('Game started!', 'success');
     }
 
@@ -413,9 +422,10 @@ class CaroGameClient {
                 this.showGameResult(null, true);
             }
         } else {
-            // Game continues - update timer display
+            // Game continues - update timer display and restart countdown
             this.currentTimeLeft = data.turnTimeLeft || 30;
             this.updateTimer();
+            this.startClientTimer();
         }
     }
 
@@ -444,9 +454,10 @@ class CaroGameClient {
         
         this.showToast('Game has been reset!', 'info');
         
-        // If game is already started (2 players), show ready message
+        // If game is already started (2 players), show ready message and start timer
         if (data.gameStarted && this.players.length === 2) {
             this.showToast('New game starting...', 'success');
+            this.startClientTimer();
         }
     }
 
@@ -460,32 +471,180 @@ class CaroGameClient {
         this.currentTimeLeft = 30;
         this.updateTurnIndicator();
         this.updateTimer();
+        this.startClientTimer();
         this.showToast('Time up! Turn switched.', 'info');
     }
 
     // Timer management
     updateTimer() {
-        this.elements.timerDisplay.textContent = this.currentTimeLeft;
-        
-        // Update timer circle color
-        const timerCircle = document.querySelector('.timer-circle');
-        timerCircle.className = 'timer-circle';
-        
-        if (this.currentTimeLeft <= 5) {
-            timerCircle.classList.add('danger');
-        } else if (this.currentTimeLeft <= 10) {
-            timerCircle.classList.add('warning');
-        }
-        
-        // Update progress bar
+        // Calculate progress percentage
         const percentage = (this.currentTimeLeft / 30) * 100;
-        this.elements.timerBar.style.width = percentage + '%';
+        
+        // Update player cards and board effects
+        this.updatePlayerTimers();
+        this.updateBoardEffects();
+    }
+
+    updatePlayerTimers() {
+        const currentPlayerSymbol = this.getCurrentPlayerSymbol();
+        const player1Card = this.elements.player1;
+        const player2Card = this.elements.player2;
+        const gameBoard = this.elements.gameBoard;
+        
+        // Clear all active states
+        player1Card.classList.remove('active-player', 'warning', 'danger');
+        player2Card.classList.remove('active-player', 'warning', 'danger');
+        gameBoard.classList.remove('my-turn', 'warning', 'danger');
+        
+        // Hide all timers first
+        const player1Timer = player1Card.querySelector('.player-timer');
+        const player2Timer = player2Card.querySelector('.player-timer');
+        player1Timer.style.display = 'none';
+        player2Timer.style.display = 'none';
+        
+        // Progress percentage for border animation (reverse: 100 -> 0)
+        const progressPercentage = (this.currentTimeLeft / 30) * 100;
+        
+        // Set active player and show their timer
+        if (currentPlayerSymbol === 'X') {
+            player1Card.classList.add('active-player');
+            player1Card.style.setProperty('--progress', progressPercentage);
+            player1Timer.style.display = 'flex';
+            
+            // Update timer display
+            this.elements.player1Timer.textContent = this.currentTimeLeft;
+            this.elements.player1TimerBar.style.width = progressPercentage + '%';
+            
+            if (this.currentTimeLeft <= 5) {
+                player1Card.classList.add('danger');
+            } else if (this.currentTimeLeft <= 10) {
+                player1Card.classList.add('warning');
+            }
+        } else if (currentPlayerSymbol === 'O') {
+            player2Card.classList.add('active-player');
+            player2Card.style.setProperty('--progress', progressPercentage);
+            player2Timer.style.display = 'flex';
+            
+            // Update timer display
+            this.elements.player2Timer.textContent = this.currentTimeLeft;
+            this.elements.player2TimerBar.style.width = progressPercentage + '%';
+            
+            if (this.currentTimeLeft <= 5) {
+                player2Card.classList.add('danger');
+            } else if (this.currentTimeLeft <= 10) {
+                player2Card.classList.add('warning');
+            }
+        }
+    }
+
+    updateBoardEffects() {
+        const gameBoard = this.elements.gameBoard;
+        
+        // Check if it's current player's turn
+        if (this.isMyTurn()) {
+            gameBoard.classList.add('my-turn');
+            
+            // Set progress for board border animation
+            const progressPercentage = (this.currentTimeLeft / 30) * 100;
+            gameBoard.style.setProperty('--progress', progressPercentage);
+            
+            if (this.currentTimeLeft <= 5) {
+                gameBoard.classList.add('danger');
+            } else if (this.currentTimeLeft <= 10) {
+                gameBoard.classList.add('warning');
+            }
+        }
+    }
+
+    isMyTurn() {
+        if (!this.gameStarted || !this.players || this.players.length < 2) return false;
+        
+        const myPlayer = this.players.find(p => p.name === this.playerName);
+        if (!myPlayer) return false;
+        
+        return myPlayer.symbol === this.currentPlayer;
+    }
+
+    getCurrentPlayerSymbol() {
+        return this.currentPlayer;
+    }
+
+    startClientTimer() {
+        this.stopTimer(); // Clear any existing timer
+        
+        this.timerInterval = setInterval(() => {
+            if (this.gameStarted && this.currentTimeLeft > 0) {
+                this.currentTimeLeft--;
+                this.updateTimer();
+                
+                // Play warning sound when time is low
+                if (this.currentTimeLeft === 5) {
+                    this.playWarningSound();
+                }
+                
+                // If time reaches 0, the server will handle the timeout
+                if (this.currentTimeLeft <= 0) {
+                    this.stopTimer();
+                }
+            }
+        }, 1000);
     }
 
     stopTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
+        }
+        
+        // Clear all visual effects when timer stops
+        this.clearTimerEffects();
+    }
+
+    clearTimerEffects() {
+        // Clear board effects
+        const gameBoard = this.elements.gameBoard;
+        gameBoard.classList.remove('my-turn', 'warning', 'danger');
+        gameBoard.style.removeProperty('--progress');
+        
+        // Clear player card effects
+        this.elements.player1.classList.remove('active-player', 'warning', 'danger');
+        this.elements.player2.classList.remove('active-player', 'warning', 'danger');
+        this.elements.player1.style.removeProperty('--progress');
+        this.elements.player2.style.removeProperty('--progress');
+        
+        // Hide all timers
+        const player1Timer = this.elements.player1.querySelector('.player-timer');
+        const player2Timer = this.elements.player2.querySelector('.player-timer');
+        if (player1Timer) player1Timer.style.display = 'none';
+        if (player2Timer) player2Timer.style.display = 'none';
+        
+        // Reset timer displays
+        this.elements.player1Timer.textContent = '30';
+        this.elements.player2Timer.textContent = '30';
+        this.elements.player1TimerBar.style.width = '100%';
+        this.elements.player2TimerBar.style.width = '100%';
+    }
+
+    playWarningSound() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (e) {
+            // Silent fail if audio context not supported
         }
     }
 
@@ -494,16 +653,18 @@ class CaroGameClient {
         const player1Element = this.elements.player1.querySelector('.player-name');
         const player2Element = this.elements.player2.querySelector('.player-name');
 
+        // Clear all active states
+        this.elements.player1.classList.remove('active-player', 'warning', 'danger');
+        this.elements.player2.classList.remove('active-player', 'warning', 'danger');
+
         if (this.players.length >= 1) {
             player1Element.textContent = this.players[0].name;
-            this.elements.player1.classList.remove('active');
         } else {
             player1Element.textContent = 'Waiting...';
         }
 
         if (this.players.length >= 2) {
             player2Element.textContent = this.players[1].name;
-            this.elements.player2.classList.remove('active');
         } else {
             player2Element.textContent = 'Waiting...';
         }
@@ -604,6 +765,7 @@ class CaroGameClient {
         this.stopTimer();
         this.currentTimeLeft = 30;
         this.clearChat();
+        this.clearTimerEffects();
     }
 
     // Chat methods

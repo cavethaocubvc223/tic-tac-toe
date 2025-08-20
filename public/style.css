@@ -255,8 +255,10 @@ header p {
     gap: 20px;
     justify-content: center;
     align-items: flex-start;
-    margin: 20px 0;
+    margin: 20px auto;
     flex-wrap: wrap;
+    max-width: 1200px;
+    padding: 0 20px;
 }
 
 /* Game board */
@@ -276,13 +278,78 @@ header p {
     border-radius: 15px;
     padding: 15px;
     box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-    max-width: 750px;
-    min-width: 500px;
-    width: 90vw;
-    height: 90vw;
-    max-height: 750px;
-    min-height: 500px;
+    max-width: 550px;
+    min-width: 400px;
+    width: min(60vw, 550px);
+    height: min(60vw, 550px);
+    max-height: 550px;
+    min-height: 400px;
     aspect-ratio: 1;
+    border: 4px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Progress Border Animation for Game Board */
+.game-board.my-turn {
+    border: 4px solid #4CAF50;
+    box-shadow: 
+        0 25px 50px rgba(0,0,0,0.3),
+        0 0 30px rgba(76, 175, 80, 0.5);
+}
+
+.game-board.my-turn.warning {
+    border-color: #FF9800;
+    box-shadow: 
+        0 25px 50px rgba(0,0,0,0.3),
+        0 0 30px rgba(255, 152, 0, 0.5);
+}
+
+.game-board.my-turn.danger {
+    border-color: #F44336;
+    box-shadow: 
+        0 25px 50px rgba(0,0,0,0.3),
+        0 0 30px rgba(244, 67, 54, 0.7);
+}
+
+/* Diagonal Progress Border Animation */
+.game-board.my-turn::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 21px;
+    background: linear-gradient(
+        135deg,
+        #4CAF50 0%,
+        #4CAF50 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
+    z-index: -1;
+    transition: all 0.3s ease;
+}
+
+.game-board.my-turn.warning::before {
+    background: linear-gradient(
+        135deg,
+        #FF9800 0%,
+        #FF9800 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
+}
+
+.game-board.my-turn.danger::before {
+    background: linear-gradient(
+        135deg,
+        #F44336 0%,
+        #F44336 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
 }
 
 .cell {
@@ -939,11 +1006,44 @@ header p {
 
 /* Chat & Players Section */
 .chat-players-section {
-    width: 300px;
-    max-width: 300px;
+    width: 350px;
+    max-width: 350px;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    height: fit-content;
+    align-self: flex-start;
+}
+
+/* Room Info Sidebar */
+.room-info-sidebar {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.room-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.room-details span {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.room-details strong {
+    color: #ecf0f1;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-left: 5px;
 }
 
 /* Chat container */
@@ -1090,6 +1190,94 @@ header p {
     }
 }
 
+/* Game Status Sidebar */
+.game-status-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    margin-bottom: 15px;
+}
+
+.current-turn-info h4 {
+    color: white;
+    text-align: center;
+    margin: 0 0 15px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.turn-display {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.turn-display span {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.turn-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    border: 3px solid rgba(255,255,255,0.3);
+    transition: all 0.3s ease;
+}
+
+.timer-circle.warning {
+    background: rgba(255, 193, 7, 0.8);
+    border-color: #ffc107;
+    animation: pulse 1s infinite;
+}
+
+.timer-circle.danger {
+    background: rgba(220, 53, 69, 0.8);
+    border-color: #dc3545;
+    animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.timer-progress {
+    width: 80px;
+    height: 8px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%);
+    transition: width 1s linear;
+    border-radius: 4px;
+}
+
 /* Players Info Compact */
 .players-info-compact {
     background: #34495e;
@@ -1106,21 +1294,112 @@ header p {
     font-weight: 600;
 }
 
+/* Current Turn Display */
+.current-turn-display {
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+}
+
+.current-turn-display span {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Player Card with Progress Border */
 .player-card {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
+    padding: 12px 15px;
     background: #2c3e50;
-    border-radius: 10px;
-    margin-bottom: 8px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    border: 3px solid transparent;
+}
+
+/* Progress Border for Player Cards */
+.progress-border {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: 15px;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        transparent 360deg
+    );
+    z-index: -1;
     transition: all 0.3s ease;
 }
 
-.player-card.active {
+.player-card.active-player .progress-border {
+    background: linear-gradient(
+        135deg,
+        #4CAF50 0%,
+        #4CAF50 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
+    animation: progress-glow 2s ease-in-out infinite;
+}
+
+.player-card.active-player.warning .progress-border {
+    background: linear-gradient(
+        135deg,
+        #FF9800 0%,
+        #FF9800 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
+    animation: progress-glow 1s ease-in-out infinite;
+}
+
+.player-card.active-player.danger .progress-border {
+    background: linear-gradient(
+        135deg,
+        #F44336 0%,
+        #F44336 calc(var(--progress, 100) * 1%),
+        transparent calc(var(--progress, 100) * 1%),
+        transparent 100%
+    );
+    animation: progress-glow 0.5s ease-in-out infinite;
+}
+
+@keyframes progress-glow {
+    0%, 100% { 
+        opacity: 0.8;
+        filter: brightness(1);
+    }
+    50% { 
+        opacity: 1;
+        filter: brightness(1.2);
+    }
+}
+
+.player-card.active-player {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     transform: translateX(5px);
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    border-color: #4CAF50;
+}
+
+.player-card.active-player.warning {
+    border-color: #FF9800;
+    box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+}
+
+.player-card.active-player.danger {
+    border-color: #F44336;
+    box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3);
 }
 
 .player-card .player-symbol {
@@ -1147,6 +1426,97 @@ header p {
     font-style: italic;
 }
 
+/* Player Timer */
+.player-timer {
+    margin-top: 8px;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 4px;
+}
+
+.timer-text {
+    font-size: 0.8rem;
+    color: #95a5a6;
+    font-weight: 500;
+}
+
+.timer-progress-mini {
+    width: 80px;
+    height: 4px;
+    background: rgba(149, 165, 166, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.timer-bar-mini {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745 0%, #ffc107 60%, #dc3545 100%);
+    border-radius: 2px;
+    transition: width 1s linear;
+    width: 100%;
+}
+
+.player-card.active-player .timer-text {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+.player-card.active-player.warning .timer-text {
+    color: #FF9800;
+}
+
+.player-card.active-player.danger .timer-text {
+    color: #F44336;
+}
+
+.player-details .player-timer {
+    font-size: 0.7rem;
+    color: #95a5a6;
+    font-weight: 500;
+    margin-top: 4px;
+    padding: 3px 8px;
+    background: rgba(149, 165, 166, 0.2);
+    border-radius: 6px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(149, 165, 166, 0.3);
+}
+
+.player-card.active .player-timer {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.4);
+    font-weight: 600;
+    animation: timer-pulse 1s infinite;
+}
+
+.player-card.active.warning .player-timer {
+    color: #FF9800;
+    background: rgba(255, 152, 0, 0.2);
+    border-color: rgba(255, 152, 0, 0.4);
+    animation: timer-pulse 0.5s infinite;
+}
+
+.player-card.active.danger .player-timer {
+    color: #F44336;
+    background: rgba(244, 67, 54, 0.2);
+    border-color: rgba(244, 67, 54, 0.4);
+    animation: timer-pulse 0.3s infinite;
+}
+
+@keyframes timer-pulse {
+    0%, 100% { 
+        transform: scale(1); 
+        opacity: 1; 
+        box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+    }
+    50% { 
+        transform: scale(1.05); 
+        opacity: 0.9; 
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+}
+
 .vs-compact {
     text-align: center;
     color: #95a5a6;
@@ -1160,15 +1530,82 @@ header p {
     .game-content {
         flex-direction: column;
         align-items: center;
-    }
-    
-    .chat-players-section {
-        width: 90%;
-        max-width: 500px;
-        order: 2;
+        gap: 15px;
+        margin: 10px auto;
+        padding: 0 10px;
     }
     
     .game-board-container {
         order: 1;
+        width: 95%;
+    }
+    
+    .chat-players-section {
+        width: 95%;
+        max-width: 500px;
+        order: 2;
+    }
+    
+    .room-info-sidebar {
+        order: -1;
+        margin-bottom: 10px;
+    }
+    
+    .room-details {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    
+    .game-status-sidebar .turn-timer {
+        flex-direction: row;
+        gap: 15px;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .timer-circle {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+    }
+    
+    .timer-progress {
+        width: 100px;
+    }
+    
+    .game-board.my-turn {
+        border-width: 3px;
+    }
+    
+    .game-board.my-turn::before {
+        top: -5px;
+        left: -5px;
+        right: -5px;
+        bottom: -5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-content {
+        gap: 10px;
+        margin: 5px auto;
+    }
+    
+    .game-status-sidebar,
+    .players-info-compact,
+    .chat-container {
+        padding: 12px;
+    }
+    
+    .timer-circle {
+        width: 45px;
+        height: 45px;
+        font-size: 0.9rem;
+    }
+    
+    .timer-progress {
+        width: 80px;
+        height: 6px;
     }
 }
