@@ -173,20 +173,22 @@ make backup-redis
 ## 🏗️ Project Structure
 
 ```
-caro-online-game/
-├── server.js              # Express + Socket.IO server
-├── package.json           # Dependencies and scripts
-├── yarn.lock              # Yarn lock file
-├── Dockerfile             # Multi-stage Docker build
-├── docker-compose.yml     # Redis + App services
-├── Makefile               # Docker and development commands
-├── .dockerignore          # Docker build exclusions
-├── .env.example           # Environment variables template
-├── README.md              # This documentation
-└── public/                # Static files
-    ├── index.html         # Game interface
-    ├── style.css          # CSS styling
-    └── client.js          # JavaScript client
+tic-tac-toe/
+├── server.js                      # Express + Socket.IO server
+├── package.json                   # Dependencies and scripts
+├── yarn.lock                      # Yarn lock file
+├── Dockerfile                     # Multi-stage Docker build
+├── docker-compose.yml             # Development services
+├── docker-compose.prod.yml        # Production with Docker Hub image
+├── Makefile                       # Docker and development commands
+├── .dockerignore                  # Docker build exclusions
+├── README.md                      # This documentation
+├── .github/workflows/             # GitHub Actions CI/CD
+│   └── docker-build.yml           # Docker Hub build & push
+└── public/                        # Static files
+    ├── index.html                 # Game interface
+    ├── style.css                  # CSS styling
+    └── client.js                  # JavaScript client
 ```
 
 ## 🔧 Socket.IO API
@@ -242,20 +244,27 @@ caro-online-game/
 ## 🚀 Deployment
 
 ### Docker Production Deployment
-```bash
-# Build and start production services
-docker-compose up -d --build
 
-# Scale the application (if needed)
-docker-compose up -d --scale caro-game=3
+#### Option 1: Using Docker Hub Image (Recommended)
+```bash
+# Use production compose with Docker Hub image
+docker-compose -f docker-compose.prod.yml up -d
+
+# Pull latest image and restart
+docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d --force-recreate
 
 # View production logs
-docker-compose logs -f caro-game
+docker-compose -f docker-compose.prod.yml logs -f tic-tac-toe-game
+```
 
-# Update deployment
-git pull origin main
-docker-compose build --no-cache
-docker-compose up -d --force-recreate
+#### Option 2: Local Build
+```bash
+# Build and start production services locally
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f caro-game
 ```
 
 ### VPS/Cloud Deployment
@@ -298,6 +307,113 @@ TURN_TIME_LIMIT=30
 ROOM_EXPIRY_TIME=3600
 SESSION_EXPIRY=86400
 ```
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Setup
+
+This project uses Docker Hub for image hosting with automated CI/CD:
+
+#### Docker Build & Push (`docker-build.yml`)
+- **Triggers**: Push to `main`, manual workflow dispatch
+- **Features**:
+  - Multi-arch Docker builds (amd64/arm64)
+  - Docker Hub publishing as `chungdfly/tic-tac-toe:latest`
+  - Security scanning with Trivy
+  - Build caching for faster builds
+  - Automatic cleanup to save disk space
+
+### Setup CI/CD
+
+1. **Required GitHub Secrets**:
+   - `DOCKERHUB_USERNAME` - Your Docker Hub username (chungdfly)
+   - `DOCKERHUB_TOKEN` - Docker Hub access token
+
+2. **Create Docker Hub Access Token**:
+   - Go to [Docker Hub Settings](https://hub.docker.com/settings/security)
+   - Create new access token
+   - Add to GitHub repository secrets
+
+3. **Manual Trigger**:
+   - Go to Actions tab in GitHub
+   - Select "Build and Push Docker Image"
+   - Click "Run workflow"
+
+### Deployment Commands
+
+```bash
+# Production deployment with Docker Hub image
+docker-compose -f docker-compose.prod.yml up -d
+
+# Development deployment (local build)
+make deploy
+
+# Pull latest image and update production
+docker-compose -f docker-compose.prod.yml pull tic-tac-toe-game
+docker-compose -f docker-compose.prod.yml up -d --force-recreate tic-tac-toe-game
+
+# Quick commands
+make up                  # Start development environment
+make down               # Stop all services
+make logs               # View logs
+make health             # Check container health
+```
+
+### Backup & Monitoring
+
+```bash
+# Backup commands
+make backup              # Full production backup
+make backup-staging      # Staging backup
+make backup-dev         # Development Redis backup
+
+# Manual backup
+./scripts/backup.sh production full
+./scripts/backup.sh staging redis-only
+
+# Monitoring
+make health             # Check container health
+make monitor            # Resource usage monitoring
+```
+
+## 🐛 Recent Bug Fixes
+
+### Game End Logic Fix (Critical)
+**Problem**: Timer continued running after game ended, causing memory leaks and potential crashes.
+
+**Root Cause**: 
+- When a player won or game ended in draw, the turn timer wasn't properly cleared
+- This led to timer events continuing to fire after game completion
+- Redis wasn't updated with final game state
+
+**Solution**:
+```javascript
+// Before (Buggy)
+if (!result.winner && !result.draw) {
+    room.game.startTurnTimer();
+}
+
+// After (Fixed)  
+if (result.winner || result.draw) {
+    // Game ended - clear timer and update Redis
+    room.game.clearTimer();
+    await saveRoomToRedis(roomId, roomData);
+} else {
+    // Game continues - restart timer
+    room.game.startTurnTimer();
+}
+```
+
+**Impact**: 
+- ✅ Fixed memory leaks from uncleaned timers
+- ✅ Proper game state persistence in Redis  
+- ✅ Improved game end experience
+- ✅ Better resource management
+
+### Enhanced Game Reset
+- Improved reset logic with proper Redis updates
+- Better UI state management during reset
+- Automatic game restart when 2 players are present
 
 ## 📝 License
 

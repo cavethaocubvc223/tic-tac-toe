@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  # Redis database for production
+  redis:
+    image: redis:7-alpine 
+    container_name: tic_tac_toe_redis_prod
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tic-tac-toe-prod
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Tic-tac-toe game application for production
+  tic-tac-toe-game:
+    image: chungdfly/tic-tac-toe:latest
+    container_name: tic_tac_toe_game_prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
+      - TURN_TIME_LIMIT=${TURN_TIME_LIMIT:-30}
+      - MAX_PLAYERS_PER_ROOM=${MAX_PLAYERS_PER_ROOM:-2}
+      - ROOM_EXPIRY_TIME=${ROOM_EXPIRY_TIME:-3600}
+      - SESSION_EXPIRY=${SESSION_EXPIRY:-86400}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - tic-tac-toe-prod
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  tic-tac-toe-prod:
+    driver: bridge
+
+volumes:
+  redis_data_prod:
+    driver: local

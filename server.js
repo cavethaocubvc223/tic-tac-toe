@@ -16,12 +16,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Redis Client Configuration
 const redisClient = createClient({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
-    password: process.env.REDIS_PASSWORD || '',
-    db: process.env.REDIS_DB || 0,
-    retryDelayOnFailover: 100,
-    enableOfflineQueue: false
+    url: `redis://${process.env.REDIS_PASSWORD ? `:${process.env.REDIS_PASSWORD}@` : ''}${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}/${process.env.REDIS_DB || 0}`,
+    socket: {
+        reconnectStrategy: (retries) => Math.min(retries * 50, 500)
+    },
+    legacyMode: false
 });
 
 // Redis connection events
@@ -583,7 +582,7 @@ io.on('connection', (socket) => {
     });
 
     // Thực hiện nước đi
-    socket.on('makeMove', (data) => {
+    socket.on('makeMove', async (data) => {
         const { row, col } = data;
         const roomId = socket.roomId;
         const room = rooms.get(roomId);
@@ -596,8 +595,26 @@ io.on('connection', (socket) => {
         const result = room.game.makeMove(socket.id, row, col);
         
         if (result.success) {
-            // Khởi động lại timer cho lượt tiếp theo
-            if (!result.winner && !result.draw) {
+            // Xử lý timer dựa trên kết quả game
+            if (result.winner || result.draw) {
+                // Game kết thúc - clear timer và update Redis
+                room.game.clearTimer();
+                console.log(`🏆 Game ended in room ${roomId}: ${result.winner ? `Winner: ${result.winner.name}` : 'Draw'}`);
+                
+                // Update room status in Redis
+                const roomData = {
+                    id: roomId,
+                    players: room.game.players,
+                    board: room.game.board,
+                    currentPlayer: room.game.currentPlayer,
+                    gameStarted: room.game.gameStarted,
+                    gameEnded: true,
+                    winner: result.winner,
+                    updatedAt: Date.now()
+                };
+                await saveRoomToRedis(roomId, roomData);
+            } else {
+                // Game tiếp tục - khởi động lại timer cho lượt tiếp theo
                 room.game.startTurnTimer();
             }
             
@@ -609,7 +626,8 @@ io.on('connection', (socket) => {
                 currentPlayer: result.currentPlayer,
                 winner: result.winner,
                 draw: result.draw,
-                turnTimeLeft: room.game.turnTimeLeft
+                turnTimeLeft: room.game.turnTimeLeft,
+                gameEnded: room.game.gameEnded
             });
         } else {
             socket.emit('error', { message: result.message });
@@ -617,17 +635,44 @@ io.on('connection', (socket) => {
     });
 
     // Chơi lại
-    socket.on('resetGame', () => {
+    socket.on('resetGame', async () => {
         const roomId = socket.roomId;
         const room = rooms.get(roomId);
 
         if (room) {
             room.game.reset();
+            console.log(`🔄 Game reset in room ${roomId}`);
+            
+            // Update room status in Redis
+            const roomData = {
+                id: roomId,
+                players: room.game.players,
+                board: room.game.board,
+                currentPlayer: room.game.currentPlayer,
+                gameStarted: room.game.gameStarted,
+                gameEnded: false,
+                winner: null,
+                updatedAt: Date.now()
+            };
+            await saveRoomToRedis(roomId, roomData);
+            
             io.to(roomId).emit('gameReset', { 
                 board: room.game.board,
                 currentPlayer: room.game.currentPlayer,
-                players: room.game.players
+                players: room.game.players,
+                gameStarted: room.game.gameStarted,
+                gameEnded: room.game.gameEnded
             });
+            
+            // Start new game if there are 2 players
+            if (room.game.players.length === 2) {
+                room.game.startGame();
+                io.to(roomId).emit('gameStart', { 
+                    players: room.game.players,
+                    currentPlayer: room.game.currentPlayer,
+                    turnTimeLeft: room.game.turnTimeLeft
+                });
+            }
         }
     });
 

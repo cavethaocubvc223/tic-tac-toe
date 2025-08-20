@@ -8,11 +8,12 @@ README.md
 *.md
 docs/
 
-# Dependencies (will be installed in container)
+# Dependencies (node_modules will be installed in container)
 node_modules
-yarn.lock
-package-lock.json
 .yarn
+
+# Lock files - yarn.lock is INCLUDED for consistent installs
+package-lock.json
 
 # IDE and editor files
 .vscode/

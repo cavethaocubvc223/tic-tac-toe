@@ -382,32 +382,62 @@ class CaroGameClient {
         this.currentPlayer = data.currentPlayer;
         this.updateTurnIndicator();
 
-        // Update cell
+        // Update cell with animation
         const cell = this.getCellElement(data.row, data.col);
         cell.textContent = data.symbol === 'X' ? '❌' : '⭕';
         cell.className = `cell ${data.symbol.toLowerCase()}`;
         cell.dataset.occupied = 'true';
 
+        // Add move animation
+        cell.style.animation = 'cellAppear 0.3s ease-out';
+
         // Check game end
-        if (data.winner) {
-            this.showGameResult(data.winner, false);
+        if (data.gameEnded || data.winner || data.draw) {
+            console.log('🏁 Game ended:', { winner: data.winner, draw: data.draw });
+            this.gameStarted = false;
             this.stopTimer();
-        } else if (data.draw) {
-            this.showGameResult(null, true);
-            this.stopTimer();
+            
+            if (data.winner) {
+                this.showGameResult(data.winner, false);
+            } else if (data.draw) {
+                this.showGameResult(null, true);
+            }
+        } else {
+            // Game continues - update timer display
+            this.currentTimeLeft = data.turnTimeLeft || 30;
+            this.updateTimer();
         }
     }
 
     onGameReset(data) {
+        console.log('🔄 Game reset received:', data);
+        
         this.players = data.players;
         this.currentPlayer = data.currentPlayer;
         this.gameStarted = data.gameStarted;
+        
+        // Reset game state
         this.updateBoard(data.board);
         this.updatePlayersDisplay();
         this.updateTurnIndicator();
+        
+        // Reset UI
         this.hideModal();
         this.stopTimer();
+        this.currentTimeLeft = 30;
+        this.updateTimer();
+        
+        // Clear any existing animations
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.style.animation = '';
+        });
+        
         this.showToast('Game has been reset!', 'info');
+        
+        // If game is already started (2 players), show ready message
+        if (data.gameStarted && this.players.length === 2) {
+            this.showToast('New game starting...', 'success');
+        }
     }
 
     onTimerUpdate(data) {
