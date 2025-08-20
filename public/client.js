@@ -58,6 +58,13 @@ class CaroGameClient {
         document.getElementById('leaveRoomBtn').addEventListener('click', () => this.leaveRoom());
         document.getElementById('playAgainBtn').addEventListener('click', () => this.playAgain());
         document.getElementById('backToMenuResultBtn').addEventListener('click', () => this.backToRoomList());
+        
+        // Chat event listeners
+        document.getElementById('sendChatBtn').addEventListener('click', () => this.sendChatMessage());
+        document.getElementById('toggleChatBtn').addEventListener('click', () => this.toggleChat());
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.sendChatMessage();
+        });
 
         // Enter key handlers
         this.elements.playerName.addEventListener('keypress', (e) => {
@@ -87,6 +94,9 @@ class CaroGameClient {
         this.socket.on('gameReset', (data) => this.onGameReset(data));
         this.socket.on('timerUpdate', (data) => this.onTimerUpdate(data));
         this.socket.on('turnTimeout', (data) => this.onTurnTimeout(data));
+
+        // Chat events
+        this.socket.on('chatMessage', (data) => this.onChatMessage(data));
 
         // Error handling
         this.socket.on('error', (data) => this.showToast(data.message, 'error'));
@@ -324,14 +334,14 @@ class CaroGameClient {
         this.gameStarted = data.gameStarted;
         
         if (data.gameStarted) {
-            // Nếu game đã bắt đầu, chuyển thẳng tới game screen
+            // If game already started, go directly to game screen
             this.elements.currentRoomId.textContent = this.roomId;
             this.updatePlayersDisplay();
             this.initializeGameBoard();
             this.updateBoard(data.board);
             this.showGameScreen();
         } else {
-            // Nếu chưa bắt đầu, vào waiting room
+            // If not started yet, go to waiting room
             this.elements.waitingRoomId.textContent = this.roomId;
             this.elements.waitingPlayer1Name.textContent = this.players[0].name;
             this.showWaitingRoomScreen();
@@ -593,6 +603,119 @@ class CaroGameClient {
         this.gameStarted = false;
         this.stopTimer();
         this.currentTimeLeft = 30;
+        this.clearChat();
+    }
+
+    // Chat methods
+    sendChatMessage() {
+        const chatInput = document.getElementById('chatInput');
+        const message = chatInput.value.trim();
+        
+        if (!message) return;
+        if (message.length > 200) {
+            this.showToast('Message too long (max 200 characters)', 'error');
+            return;
+        }
+        if (!this.roomId) {
+            this.showToast('You must be in a room to chat', 'error');
+            return;
+        }
+
+        // Send message to server
+        this.socket.emit('chatMessage', {
+            roomId: this.roomId,
+            message: message,
+            sender: this.playerName
+        });
+
+        chatInput.value = '';
+    }
+
+    onChatMessage(data) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        
+        // Handle system messages
+        if (data.isSystem || data.sender === 'System') {
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = data.message;
+        } else {
+            const isOwnMessage = data.sender === this.playerName;
+            messageDiv.className = `chat-message ${isOwnMessage ? 'own' : 'other'}`;
+            
+            const time = new Date().toLocaleTimeString('vi-VN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            messageDiv.innerHTML = `
+                <div class="message-sender">${data.sender}</div>
+                <div class="message-content">${this.escapeHtml(data.message)}</div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            // Add notification sound effect for non-own messages
+            if (!isOwnMessage) {
+                this.playChatSound();
+            }
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    toggleChat() {
+        const chatContainer = document.querySelector('.chat-container');
+        const toggleBtn = document.getElementById('toggleChatBtn');
+        
+        chatContainer.classList.toggle('collapsed');
+        toggleBtn.textContent = chatContainer.classList.contains('collapsed') ? '🔼' : '🔽';
+    }
+
+    clearChat() {
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML = '<div class="system-message">Welcome! You can chat with your opponent here.</div>';
+    }
+
+    addSystemMessage(message) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'system-message';
+        messageDiv.textContent = message;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    playChatSound() {
+        // Simple notification sound using Web Audio API
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        } catch (e) {
+            // Silent fail if audio context not supported
+        }
     }
 }
 

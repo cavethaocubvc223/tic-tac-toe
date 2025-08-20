@@ -48,7 +48,7 @@ const REDIS_KEYS = {
     USER_ROOM: 'game:user_room:'
 };
 
-// Lưu trữ thông tin phòng chơi (fallback cho Redis)
+// Store room information (fallback for Redis)
 const rooms = new Map();
 
 // Redis Utility Functions
@@ -252,34 +252,34 @@ class CaroGame {
     }
 
     makeMove(playerId, row, col) {
-        // Kiểm tra lượt chơi
+        // Check turn
         const player = this.players.find(p => p.id === playerId);
         if (!player || player.symbol !== this.currentPlayer || this.gameEnded) {
             return { success: false, message: 'Not your turn or game has ended' };
         }
 
-        // Kiểm tra ô trống
+        // Check empty cell
         if (this.board[row][col] !== null) {
             return { success: false, message: 'This cell has already been taken' };
         }
 
-        // Thực hiện nước đi
+        // Make move
         this.board[row][col] = player.symbol;
 
-        // Kiểm tra thắng
+        // Check win
         if (this.checkWin(row, col, player.symbol)) {
             this.gameEnded = true;
             this.winner = player;
             return { success: true, winner: player, board: this.board };
         }
 
-        // Kiểm tra hòa
+        // Check draw
         if (this.isBoardFull()) {
             this.gameEnded = true;
             return { success: true, draw: true, board: this.board };
         }
 
-        // Chuyển lượt
+        // Switch turn
         this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
         
         return { success: true, board: this.board, currentPlayer: this.currentPlayer };
@@ -287,16 +287,16 @@ class CaroGame {
 
     checkWin(row, col, symbol) {
         const directions = [
-            [0, 1],   // ngang
-            [1, 0],   // dọc
-            [1, 1],   // chéo chính
-            [1, -1]   // chéo phụ
+            [0, 1],   // horizontal
+            [1, 0],   // vertical
+            [1, 1],   // main diagonal
+            [1, -1]   // anti-diagonal
         ];
 
         for (let [dx, dy] of directions) {
             let count = 1;
             
-            // Kiểm tra về một phía
+            // Check one direction
             let r = row + dx, c = col + dy;
             while (r >= 0 && r < 15 && c >= 0 && c < 15 && this.board[r][c] === symbol) {
                 count++;
@@ -304,7 +304,7 @@ class CaroGame {
                 c += dy;
             }
             
-            // Kiểm tra về phía ngược lại
+            // Check opposite direction
             r = row - dx;
             c = col - dy;
             while (r >= 0 && r < 15 && c >= 0 && c < 15 && this.board[r][c] === symbol) {
@@ -419,13 +419,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Lấy danh sách phòng
+    // Get room list
     socket.on('getRoomList', async () => {
         const roomList = await getRoomListForBroadcast();
         socket.emit('roomListUpdated', roomList);
     });
 
-    // Tạo phòng mới
+    // Create new room
     socket.on('createRoom', async (data) => {
         if (!currentUsername) {
             socket.emit('error', { message: 'You need to login before creating a room' });
@@ -453,7 +453,7 @@ io.on('connection', (socket) => {
         socket.roomId = roomId;
         rooms.get(roomId).sockets.add(socket.id);
 
-        // Thêm player vào game
+        // Add player to game
         if (game.addPlayer(socket.id, currentUsername)) {
             // Save to Redis
             const roomData = {
@@ -480,7 +480,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Tham gia phòng
+    // Join room
     socket.on('joinRoom', async (data) => {
         const { roomId } = data;
         
@@ -541,7 +541,15 @@ io.on('connection', (socket) => {
 
             socket.to(roomId).emit('playerJoined', { players: room.game.players });
 
-            // Nếu đủ 2 người chơi, bắt đầu game
+            // Send chat notification
+            io.to(roomId).emit('chatMessage', {
+                sender: 'System',
+                message: `${currentUsername} joined the room`,
+                timestamp: Date.now(),
+                isSystem: true
+            });
+
+            // If 2 players ready, start game
             if (room.game.players.length === 2) {
                 room.game.startGame();
                 
@@ -553,6 +561,14 @@ io.on('connection', (socket) => {
                     players: room.game.players,
                     currentPlayer: room.game.currentPlayer,
                     turnTimeLeft: room.game.turnTimeLeft
+                });
+
+                // Send game start notification to chat
+                io.to(roomId).emit('chatMessage', {
+                    sender: 'System',
+                    message: `🎮 Game started! Have fun playing!`,
+                    timestamp: Date.now(),
+                    isSystem: true
                 });
                 
                 // Start timer broadcast
@@ -581,7 +597,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Thực hiện nước đi
+    // Make move
     socket.on('makeMove', async (data) => {
         const { row, col } = data;
         const roomId = socket.roomId;
@@ -595,9 +611,9 @@ io.on('connection', (socket) => {
         const result = room.game.makeMove(socket.id, row, col);
         
         if (result.success) {
-            // Xử lý timer dựa trên kết quả game
+            // Handle timer based on game result
             if (result.winner || result.draw) {
-                // Game kết thúc - clear timer và update Redis
+                // Game ended - clear timer and update Redis
                 room.game.clearTimer();
                 console.log(`🏆 Game ended in room ${roomId}: ${result.winner ? `Winner: ${result.winner.name}` : 'Draw'}`);
                 
@@ -614,7 +630,7 @@ io.on('connection', (socket) => {
                 };
                 await saveRoomToRedis(roomId, roomData);
             } else {
-                // Game tiếp tục - khởi động lại timer cho lượt tiếp theo
+                // Game continues - restart timer for next turn
                 room.game.startTurnTimer();
             }
             
@@ -634,7 +650,44 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Chơi lại
+    // Chat message
+    socket.on('chatMessage', (data) => {
+        const { roomId, message, sender } = data;
+        
+        if (!roomId || !message || !sender) {
+            socket.emit('error', { message: 'Invalid chat message data' });
+            return;
+        }
+        
+        if (message.length > 200) {
+            socket.emit('error', { message: 'Message too long (max 200 characters)' });
+            return;
+        }
+        
+        // Verify user is in the room
+        if (socket.roomId !== roomId) {
+            socket.emit('error', { message: 'You are not in this room' });
+            return;
+        }
+        
+        // Verify sender is current user
+        if (currentUsername !== sender) {
+            socket.emit('error', { message: 'Invalid sender' });
+            return;
+        }
+        
+        // Broadcast message to all users in the room
+        const sanitizedMessage = message.replace(/[<>]/g, ''); // Basic XSS protection
+        io.to(roomId).emit('chatMessage', {
+            sender: sender,
+            message: sanitizedMessage,
+            timestamp: Date.now()
+        });
+        
+        console.log(`💬 Chat in room ${roomId} - ${sender}: ${sanitizedMessage}`);
+    });
+
+    // Reset game
     socket.on('resetGame', async () => {
         const roomId = socket.roomId;
         const room = rooms.get(roomId);
@@ -676,7 +729,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Xử lý disconnect
+    // Handle disconnect
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
         
@@ -706,12 +759,22 @@ io.on('connection', (socket) => {
                     await saveRoomToRedis(roomId, roomData);
                 }
                 
-                // Thông báo cho người chơi còn lại
+                // Notify remaining players
                 socket.to(roomId).emit('playerLeft', { 
                     players: room.game.players 
                 });
 
-                // Xóa phòng nếu không còn ai
+                // Send chat notification
+                if (currentUsername) {
+                    socket.to(roomId).emit('chatMessage', {
+                        sender: 'System',
+                        message: `${currentUsername} left the room`,
+                        timestamp: Date.now(),
+                        isSystem: true
+                    });
+                }
+
+                // Delete room if empty
                 if (room.sockets.size === 0) {
                     rooms.delete(roomId);
                     await removeRoomFromRedis(roomId);

@@ -34,7 +34,7 @@ services:
     container_name: tic_tac_toe_game_prod
     restart: always
     ports:
-      - "3000:3000"
+      - "9111:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
