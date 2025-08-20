@@ -19,14 +19,6 @@ services:
       start_period: 30s
     networks:
       - tic-tac-toe-prod
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
 
   # Tic-tac-toe game application for production
   tic-tac-toe-game:
@@ -57,14 +49,6 @@ services:
       start_period: 60s
     networks:
       - tic-tac-toe-prod
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 512M
-          cpus: '0.5'
     logging:
       driver: "json-file"
       options:
