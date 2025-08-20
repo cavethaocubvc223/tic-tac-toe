@@ -104,7 +104,17 @@ class CaroGameClient {
         this.socket.on('chatMessage', (data) => this.onChatMessage(data));
 
         // Error handling
-        this.socket.on('error', (data) => this.showToast(data.message, 'error'));
+        this.socket.on('error', (data) => {
+            this.showToast(data.message, 'error');
+            
+            // Handle forced disconnect
+            if (data.disconnect) {
+                setTimeout(() => {
+                    this.showScreen('userNameScreen');
+                    this.showToast('Redirected to login screen.', 'info');
+                }, 2000);
+            }
+        });
 
         // Connection events
         this.socket.on('connect', () => {
@@ -467,12 +477,42 @@ class CaroGameClient {
     }
 
     onTurnTimeout(data) {
-        this.currentPlayer = data.currentPlayer;
-        this.currentTimeLeft = 30;
-        this.updateTurnIndicator();
-        this.updateTimer();
-        this.startClientTimer();
-        this.showToast('Time up! Turn switched.', 'info');
+        if (data.gameEnded && data.winner) {
+            // Game ended due to timeout
+            this.stopTimer();
+            this.clearTimerEffects();
+            
+            const winner = data.winner;
+            const timedOutPlayer = data.timedOutPlayer;
+            
+            // Show timeout result
+            if (timedOutPlayer && timedOutPlayer.id === this.socket.id) {
+                this.showToast(`⏰ You ran out of time and lost the game!`, 'error');
+            } else {
+                this.showToast(`⏰ ${timedOutPlayer ? timedOutPlayer.name : 'Player'} timed out! ${winner.name} wins!`, 'success');
+            }
+            
+            // Update players display with winner highlight
+            this.updatePlayersDisplay();
+            this.elements.turnIndicator.textContent = `🏆 ${winner.name} wins!`;
+            
+            // Game has ended - show reset option or wait for disconnect
+            if (timedOutPlayer && timedOutPlayer.id === this.socket.id) {
+                // Current player timed out - will be disconnected soon
+                setTimeout(() => {
+                    this.showScreen('userNameScreen');
+                    this.showToast('You have been disconnected due to timeout. Please rejoin.', 'error');
+                }, 3000);
+            }
+        } else {
+            // Old logic - should not happen anymore
+            this.currentPlayer = data.currentPlayer;
+            this.currentTimeLeft = 30;
+            this.updateTurnIndicator();
+            this.updateTimer();
+            this.startClientTimer();
+            this.showToast('Time up! Turn switched.', 'info');
+        }
     }
 
     // Timer management

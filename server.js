@@ -36,8 +36,26 @@ redisClient.on('ready', () => {
     console.log('✅ Redis client ready');
 });
 
-// Connect to Redis
-redisClient.connect().catch(console.error);
+// Connect to Redis and clear all data on startup
+redisClient.connect().then(async () => {
+    try {
+        // Clear all game-related data from Redis on server start
+        console.log('🧹 Clearing all Redis data...');
+        
+        // Get all keys with game prefix
+        const keys = await redisClient.keys('game:*');
+        if (keys.length > 0) {
+            await redisClient.del(keys);
+            console.log(`🗑️ Cleared ${keys.length} Redis keys`);
+        } else {
+            console.log('✅ No Redis keys to clear');
+        }
+        
+        console.log('🚀 Redis cleared and ready for new game data');
+    } catch (error) {
+        console.error('❌ Error clearing Redis data:', error);
+    }
+}).catch(console.error);
 
 // Redis Keys
 const REDIS_KEYS = {
@@ -363,13 +381,21 @@ class CaroGame {
 
     timeOut() {
         this.clearTimer();
-        // Switch turn when time is up
-        this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
-        this.startTurnTimer();
+        
+        // Find the current player who timed out
+        const timedOutPlayer = this.players.find(p => p.symbol === this.currentPlayer);
+        const winnerPlayer = this.players.find(p => p.symbol !== this.currentPlayer);
+        
+        // Game ends - the player who timed out loses
+        this.gameEnded = true;
+        this.winner = winnerPlayer;
+        
         return {
             timeOut: true,
-            currentPlayer: this.currentPlayer,
-            turnTimeLeft: this.turnTimeLeft
+            gameEnded: true,
+            winner: winnerPlayer,
+            timedOutPlayer: timedOutPlayer,
+            message: `${timedOutPlayer ? timedOutPlayer.name : 'Player'} ran out of time and lost the game!`
         };
     }
 
@@ -586,7 +612,47 @@ io.on('connection', (socket) => {
                     
                     if (timeLeft <= 0) {
                         const timeoutResult = room.game.timeOut();
+                        
+                        // Update room status in Redis
+                        const roomData = {
+                            id: roomId,
+                            players: room.game.players,
+                            board: room.game.board,
+                            currentPlayer: room.game.currentPlayer,
+                            gameStarted: room.game.gameStarted,
+                            gameEnded: room.game.gameEnded,
+                            winner: timeoutResult.winner,
+                            updatedAt: Date.now()
+                        };
+                        await saveRoomToRedis(roomId, roomData);
+                        
+                        // Emit timeout result with game end
                         io.to(roomId).emit('turnTimeout', timeoutResult);
+                        
+                        // Send chat message about timeout
+                        io.to(roomId).emit('chatMessage', {
+                            sender: 'System',
+                            message: `⏰ ${timeoutResult.timedOutPlayer.name} ran out of time and lost! ${timeoutResult.winner.name} wins!`,
+                            timestamp: Date.now(),
+                            isSystem: true
+                        });
+                        
+                        // Disconnect the timed out player after a short delay
+                        setTimeout(async () => {
+                            const timedOutSocketId = await getUserSocketId(timeoutResult.timedOutPlayer.name);
+                            if (timedOutSocketId) {
+                                const timedOutSocket = io.sockets.sockets.get(timedOutSocketId);
+                                if (timedOutSocket) {
+                                    timedOutSocket.emit('error', { 
+                                        message: 'You have been disconnected due to timeout.',
+                                        disconnect: true 
+                                    });
+                                    timedOutSocket.disconnect(true);
+                                }
+                            }
+                        }, 3000); // 3 second delay to show result
+                        
+                        clearInterval(timerInterval);
                     }
                 }, 1000);
             }
